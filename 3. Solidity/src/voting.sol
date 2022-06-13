@@ -145,12 +145,14 @@ contract Voting is Ownable {
         WorkflowStatus.VotesTallied
         );
         uint max;
+        uint winner;
         for( uint proposal = 1; proposal <= proposalNumber; proposal++) {
             if(proposals[proposal].voteCount > max) {
                 max = proposals[proposal].voteCount;
-                winningProposalId = proposal;
+                winner = proposal;
             }
         }
+        winningProposalId = winner
     }
 
     // Everyone can check the final details of the winning proposal
