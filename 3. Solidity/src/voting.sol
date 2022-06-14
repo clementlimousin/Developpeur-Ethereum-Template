@@ -102,6 +102,7 @@ contract Voting is Ownable {
 
     // The voting administrator starts the voting session
     function startVotingSession() external onlyOwner {
+        require(bytes (proposals[0].description).length > 0, "there are no proposals");
         require(voteStatus == WorkflowStatus.ProposalsRegistrationEnded,
         "The voting session can only be start when the status it's registration ended");
     voteStatus= WorkflowStatus.VotingSessionStarted;
@@ -115,7 +116,7 @@ contract Voting is Ownable {
     function addVote(uint _proposalId) external onlyWhitelist {
         require(voteStatus == WorkflowStatus.VotingSessionStarted,
         "Voting is only when the voting session is started");
-        require(voters[msg.sender].hasVoted = true, "you have already voted !");
+        require(!voters[msg.sender].hasVoted, "you have already voted !");
         require(bytes (proposals[_proposalId].description).length > 0, "the proposal does not exist" );
         proposals[_proposalId].voteCount + 1;
 
