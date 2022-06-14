@@ -153,7 +153,7 @@ contract Voting is Ownable {
                 winner = proposal;
             }
         }
-        winningProposalId = winner
+        winningProposalId = winner;
     }
 
     // Everyone can check the final details of the winning proposal
