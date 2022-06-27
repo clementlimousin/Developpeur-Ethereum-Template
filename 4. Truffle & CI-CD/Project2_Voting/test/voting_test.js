@@ -16,6 +16,8 @@ contract("Voting", function (accounts ) {
     const user3 = accounts[3];
     const user4 = accounts[4];
     let votingInstance
+    let proposalDescription1 = 'Dog';
+    let proposalDescription2 = 'Cat';
 
     // Test of the getVoter Function
     describe('Test of the getVoter Function', function () {;
@@ -43,9 +45,7 @@ contract("Voting", function (accounts ) {
       });
 
     // Test of the getOneProposal Function
-    describe('Test of the getOneProposal Function', function () {;
-        const proposalDescription = "Dog";
-        
+    describe('Test of the getOneProposal Function', function () {;   
         // Creation of a votingInstance
         before(async function () {
           votingInstance = await Voting.new({from: owner});
@@ -54,7 +54,7 @@ contract("Voting", function (accounts ) {
           // start proposal registration
           await votingInstance.startProposalsRegistering({from: owner});
           // add a proposal from user1
-          await votingInstance.addProposal(proposalDescription, {from: user1});
+          await votingInstance.addProposal(proposalDescription1, {from: user1});
         });
     
         it("should revert 'caller is not a voter'", async function() {
@@ -69,7 +69,7 @@ contract("Voting", function (accounts ) {
     
         it("should return an existing proposal with the correct description", async function() {
           const proposal = await votingInstance.getOneProposal.call(0, {from:user1});
-          expect(proposal.description).to.be.a('string').equal(proposalDescription);
+          expect(proposal.description).to.be.a('string').equal(proposalDescription1);
         });
     
         it("should return an existing proposal with the correct voteCount", async function() {
@@ -110,8 +110,6 @@ contract("Voting", function (accounts ) {
 
     // Test of the addProposal Function
     describe('Test of the addProposal Function', function () {
-        let proposalDescription = 'Dog';
-
         // Creation of a votingInstance
         before(async function () {
             votingInstance = await Voting.new({from: owner});
@@ -120,13 +118,13 @@ contract("Voting", function (accounts ) {
           });
 
         it("should add a new proposal", async function() {
-          await votingInstance.addProposal(proposalDescription, {from: user1});     
+          await votingInstance.addProposal(proposalDescription1, {from: user1});     
           const proposal = await votingInstance.getOneProposal.call(0, {from:user1});
-          expect(proposal.description).to.be.a('string').equal(proposalDescription);
+          expect(proposal.description).to.be.a('string').equal(proposalDescription1);
         });    
     
         it("should emit ProposalRegistered event", async function() {
-          const proposalEmit = await votingInstance.addProposal(proposalDescription, {from: user1});
+          const proposalEmit = await votingInstance.addProposal(proposalDescription1, {from: user1});
           expectEvent(proposalEmit, "ProposalRegistered", { proposalId: new BN(1) });
         });
     
@@ -137,7 +135,7 @@ contract("Voting", function (accounts ) {
 
         it("should revert 'workflowstatus not ProposalsRegistrationStarted'", async function() {
             await votingInstance.endProposalsRegistering({from: owner});
-            const proposalRevert = votingInstance.addProposal(proposalDescription, {from: user1});
+            const proposalRevert = votingInstance.addProposal(proposalDescription1, {from: user1});
             expectRevert(proposalRevert, "Proposals are not allowed yet");
           });
       });
@@ -146,8 +144,6 @@ contract("Voting", function (accounts ) {
     // Test of the setVote Function
 
     describe('setVote', function () {
-        let proposalDescription = 'Dog';
-
         // Creation of a votingInstance
         before(async function () {
             votingInstance = await Voting.new({from: owner});
@@ -156,7 +152,7 @@ contract("Voting", function (accounts ) {
             await votingInstance.addVoter(user3, {from: owner});
             await votingInstance.addVoter(user4, {from: owner});
             await votingInstance.startProposalsRegistering({from: owner});
-            await votingInstance.addProposal(proposalDescription, {from: user1});
+            await votingInstance.addProposal(proposalDescription1, {from: user1});
             await votingInstance.endProposalsRegistering({from: owner}); 
             await votingInstance.startVotingSession({from: owner});   
           });
@@ -201,17 +197,26 @@ contract("Voting", function (accounts ) {
         // Creation of a votingInstance
         before(async function () {
             votingInstance = await Voting.new({from: owner});
+            await votingInstance.addVoter(user1, {from: owner});
           });
 
-        // startProposalsRegistering
-        it("should change workflow status to ProposalsRegistrationStarted and emit an event", async function() {
+        // startProposalsRegistering status
+        it("should not start Proposals Registering if not called by owner", async () => {    
+          const revertOnly = votingInstance.startProposalsRegistering({from: user1})        
+          await expectRevert(revertOnly, 'Ownable: caller is not the owner');
+        }); 
+
+        it("should emit WorkflowStatusChange event to ProposalsRegistrationStarted", async function() {
           const changeStatusStartProposals = await votingInstance.startProposalsRegistering({from: owner});   
-          const currentStatusStartProposals = await votingInstance.workflowStatus();
-          expect(currentStatusStartProposals.toString()).to.equal(Voting.WorkflowStatus.ProposalsRegistrationStarted.toString());
           expectEvent(changeStatusStartProposals, "WorkflowStatusChange", { 
             previousStatus: Voting.WorkflowStatus.RegisteringVoters.toString(), 
             newStatus: Voting.WorkflowStatus.ProposalsRegistrationStarted.toString() 
           });
+        });
+
+        it("should change workflow status to ProposalsRegistrationStarted", async function() {  
+          const currentStatusStartProposals = await votingInstance.workflowStatus();
+          expect(currentStatusStartProposals.toString()).to.equal(Voting.WorkflowStatus.ProposalsRegistrationStarted.toString());
         });
     
         it("should revert 'workflowstatus not RegisteringVoters'", async function() {  
@@ -219,54 +224,126 @@ contract("Voting", function (accounts ) {
           expectRevert(revertStartProposals, "Registering proposals cant be started now");
         });
 
-        // endProposalsRegistering
-        it("should change workflow status to ProposalsRegistrationEnded and emit an event", async function() {
+        // endProposalsRegistering status
+        it("should not end Proposals Registering if not called by owner", async () => {    
+          const revertOnly = votingInstance.endProposalsRegistering({from: user1})        
+          await expectRevert(revertOnly, 'Ownable: caller is not the owner');
+        }); 
+
+        it("should emit WorkflowStatusChange event to ProposalsRegistrationEnded", async function() {
             const changeStatusEndProposals = await votingInstance.endProposalsRegistering({from: owner});   
-            const currentStatusEndProposals = await votingInstance.workflowStatus();
-            expect(currentStatusEndProposals.toString()).to.equal(Voting.WorkflowStatus.ProposalsRegistrationEnded.toString());
             expectEvent(changeStatusEndProposals, "WorkflowStatusChange", { 
               previousStatus: Voting.WorkflowStatus.ProposalsRegistrationStarted.toString(), 
               newStatus: Voting.WorkflowStatus.ProposalsRegistrationEnded.toString() 
             });
           });
+        
+        it("should change workflow status to ProposalsRegistrationEnded", async function() {
+            const currentStatusEndProposals = await votingInstance.workflowStatus();
+            expect(currentStatusEndProposals.toString()).to.equal(Voting.WorkflowStatus.ProposalsRegistrationEnded.toString());
+        });
       
         it("should revert 'workflowstatus not RegisteringVoters'", async function() {
             const revertEndProposals = votingInstance.endProposalsRegistering({from: owner});
             expectRevert(revertEndProposals, "Registering proposals havent started yet");
           });
 
-        // startVotingSession
-        it("should change workflow status to VotingSessionStarted and emit an event", async function() {
+        // startVotingSession status
+        it("should not start Voting Session if not called by owner", async () => {    
+          const revertOnly = votingInstance.startVotingSession({from: user1})        
+          await expectRevert(revertOnly, 'Ownable: caller is not the owner');
+        }); 
+
+        it("should emit WorkflowStatusChange event to VotingSessionStarted", async function() {
             const changeStatusStartVoting = await votingInstance.startVotingSession({from: owner});
-            const currentStatusStartVoting = await votingInstance.workflowStatus();
-            expect(currentStatusStartVoting.toString()).to.equal(Voting.WorkflowStatus.VotingSessionStarted.toString());
             expectEvent(changeStatusStartVoting, "WorkflowStatusChange", { 
               previousStatus: Voting.WorkflowStatus.ProposalsRegistrationEnded.toString(), 
               newStatus: Voting.WorkflowStatus.VotingSessionStarted.toString() 
             });
           });
+
+        it("should change workflow status to VotingSessionStarted", async function() {
+          const currentStatusStartVoting = await votingInstance.workflowStatus();
+          expect(currentStatusStartVoting.toString()).to.equal(Voting.WorkflowStatus.VotingSessionStarted.toString());
+        });
       
         it("should revert 'workflowstatus not ProposalsRegistrationEnded'", async function() {
             let revertStartVoting = votingInstance.startVotingSession({from: owner});
             expectRevert(revertStartVoting, "Registering proposals phase is not finished");
           });
+
+        // revert tallyVotes status
+        it("should revert 'workflowstatus not VotingSessionEnded'", async function() {
+            const revertTally = votingInstance.tallyVotes({from: owner});
+            expectRevert(revertTally, "Current status is not voting session ended");
+          });
         
-        // endVotingSession
-        it("should change workflow status to VotingSessionEnded and emit an event", async function() {
+        // endVotingSession status
+        it("should not end Voting Session if not called by owner", async () => {    
+          const revertOnly = votingInstance.endVotingSession({from: user1})        
+          await expectRevert(revertOnly, 'Ownable: caller is not the owner');
+        }); 
+
+        it("should emit WorkflowStatusChange event to VotingSessionEnded", async function() {
             const changeStatusEndVoting = await votingInstance.endVotingSession({from: owner});
-            const currentStatusEndVoting = await votingInstance.workflowStatus();
-            expect(currentStatusEndVoting.toString()).to.equal(Voting.WorkflowStatus.VotingSessionEnded.toString());
             expectEvent(changeStatusEndVoting, "WorkflowStatusChange", { 
               previousStatus: Voting.WorkflowStatus.VotingSessionStarted.toString(), 
               newStatus: Voting.WorkflowStatus.VotingSessionEnded.toString() 
             });
           });
+        
+        it("should change workflow status to VotingSessionEnded", async function() {
+          const currentStatusEndVoting = await votingInstance.workflowStatus();
+          expect(currentStatusEndVoting.toString()).to.equal(Voting.WorkflowStatus.VotingSessionEnded.toString());
+        });
   
-        it("should revert (workflowstatus not VotingSessionStarted)", async function() {
+        it("should revert 'workflowstatus not VotingSessionStarted'", async function() {
             const revertEndVoting = votingInstance.endVotingSession({from: owner});
             expectRevert(revertEndVoting, "Voting session havent started yet");
           });
+
+        // tallyVotes status  
+        it("should not start tally if not called by owner", async () => {    
+          const revertOnly = votingInstance.tallyVotes({from: user1})        
+          await expectRevert(revertOnly, 'Ownable: caller is not the owner');
+        }); 
+
+        it("should emit WorkflowStatusChange event to VotesTallied", async function() {
+            const changeStatusTally = await votingInstance.tallyVotes({from: owner});     
+            expectEvent(changeStatusTally, "WorkflowStatusChange", { 
+              previousStatus: Voting.WorkflowStatus.VotingSessionEnded.toString(), 
+              newStatus: Voting.WorkflowStatus.VotesTallied.toString() 
+            });
+          });
+
+        it("should change workflow status to VotesTallied", async function() {     
+          const currentStatusTally = await votingInstance.workflowStatus();
+          expect(currentStatusTally.toString()).to.equal(Voting.WorkflowStatus.VotesTallied.toString());
+        });
       });
 
     // Test of the tallyVotes Function
+    describe('Test of the tallyVotes Function', function () {
+
+      // Creation of a votingInstance
+      before(async function () {
+        votingInstance = await Voting.new({from: owner});
+        await votingInstance.addVoter(user1, {from: owner});
+        await votingInstance.addVoter(user2, {from: owner});
+        await votingInstance.startProposalsRegistering({from: owner});
+        await votingInstance.addProposal(proposalDescription1, {from: user1})
+        await votingInstance.addProposal(proposalDescription2, {from: user2})
+        await votingInstance.endProposalsRegistering({from: owner});
+        await votingInstance.startVotingSession({from: owner});
+        await votingInstance.setVote(1, {from: user1});
+        await votingInstance.setVote(1, {from: user2});
+        await votingInstance.endVotingSession({from: owner});
+        await votingInstance.tallyVotes({from: owner});
+      });
+
+      it("should find the winningProposalId", async function() {     
+        const winningProposalId = await votingInstance.winningProposalID();
+        expect(new BN(winningProposalId)).to.be.bignumber.equal(new BN(1));
+      });
+    });
 })
