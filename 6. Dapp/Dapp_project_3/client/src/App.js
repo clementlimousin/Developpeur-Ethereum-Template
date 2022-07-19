@@ -14,7 +14,6 @@ function App() {
   const [contractState, setContractState] = useState({
     owner: '',
     workflowStatus: 0
-    // events: { voterRegistered: [], workflowStatusChange: [], proposalRegistered: [], voted: [] },
   });
 
   useEffect(() => {
@@ -36,8 +35,7 @@ function App() {
         let workflowStatus = await instance.methods.workflowStatus().call();
         let owner = await instance.methods.owner().call();
         setContractState({ owner: owner, workflowStatus: workflowStatus });
-
-        //let value = await instance.methods.get().call();
+        
         // Set web3, accounts, and contract to the state, and then proceed with an
         // example of interacting with the contract's methods.
         setState({ web3: web3, accounts: accounts, contract: instance });
